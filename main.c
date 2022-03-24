@@ -17,9 +17,8 @@ void Map(char *file_name) {
     while (getline(&line, &size, fp) != -1) {
         char *token, *dummy = line;
         while ((token = strsep(&dummy, " \t\n\r")) != NULL) {
-	    if (!strcmp(token, ""))
-		break;
-	    
+	        if (!strcmp(token, ""))
+		        break;
             MR_Emit(token, "1");
         }
     }
@@ -46,8 +45,8 @@ void Reduce(char *key, Getter get_next, int partition_number) {
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-	printf("Invalid usage: ./hashmap <filename> ... <searchterm>\n");
-	return 1;
+        printf("Invalid usage: ./hashmap <filename> ... <searchterm>\n");
+        return 1;
     }
     
     hashmap = MapInit();
@@ -60,9 +59,9 @@ int main(int argc, char *argv[]) {
     // get the number of occurrences and print
     char *result;
     if ((result = MapGet(hashmap, searchterm)) != NULL) {
-	printf("Found %s %d times\n", searchterm, *(int*)result);
+	    printf("Found %s %d times\n", searchterm, *(int*)result);
     } else {
-	printf("Word not found!\n");
+	    printf("Word not found!\n");
     }
     
     return 0;

@@ -1,5 +1,6 @@
 #ifndef __hashmap_h__
 #define __hashmap_h__
+#include <stddef.h>
 
 #define MAP_INIT_CAPACITY 11
 
