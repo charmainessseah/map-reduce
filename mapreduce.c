@@ -4,6 +4,7 @@
 #include <errno.h>
 #include "mapreduce.h"
 #include <pthread.h>
+
 pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 struct kv {
@@ -19,6 +20,17 @@ struct kv_list {
 
 struct kv_list kvl;
 size_t kvl_counter;
+
+struct kv_list partitioning_map;
+size_t partitioning_map_counter;
+
+void init_partition_map(size_t size) {
+    pthread_rwlock_wrlock(&rwlock);
+    partitioning_map.elements = (struct kv**) malloc(size * sizeof(struct kv*));
+    partitioning_map.num_elements = 0;
+    partitioning_map.size = size;
+    pthread_rwlock_unlock(&rwlock);
+}
 
 void init_kv_list(size_t size) {
     pthread_rwlock_wrlock(&rwlock);
@@ -39,10 +51,10 @@ void add_to_list(struct kv* pair) {
     pthread_rwlock_unlock(&rwlock);
 }
 
+// called by Map()
 // takes a key, value pair (both strings) as input 
 // key: word, value: count (1)
 // we need to store these key value pairs from various threads globally 
-// will be accessed by reducers 
 void MR_Emit(char *key, char *value) 
 {
     pthread_rwlock_wrlock(&rwlock);
@@ -56,10 +68,9 @@ void MR_Emit(char *key, char *value)
     pair->value = strdup(value);
     pthread_rwlock_unlock(&rwlock);
     add_to_list(pair);
-    
 }
 
-// num partitions has to be equal to number of reducers
+// num partitions equal to num_reducers
 // map -> partition -> reduce
 unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
     unsigned long hash = 5381;
@@ -76,30 +87,50 @@ void MR_Run(int argc, char *argv[],
 {
     // create data structure to to pass keys and values from mappers to reducers
     init_kv_list(10); // init kv list to size 10
-
-    if (argc - 1 != num_mappers) {
-        printf("incorrect number of args...\n");
-        return;
+    
+    int num_files = argc - 1;
+    int num_map_threads_created = 0;
+    
+    if (num_mappers > num_files) {
+        // TODO: handle this case
+        printf("Error: There are more mappers than files\n");
+        exit(1);
     }
 
     // create num_mappers threads to perform map tasks
     pthread_t map_threads[num_mappers];
-    for (int i  = 1; i <= num_mappers; i++) {
-        pthread_t thread;
-        map_threads[i - 1] = thread;
-        char *filename = argv[i];
-        pthread_create(&map_threads[i - 1], NULL, (void *) map, (void *) filename); // create thread calling Map() 
-    }
-    // wait for all threads before calling reduce
-    for (int i = 0; i < num_mappers; i++) {
-        pthread_join(map_threads[i], NULL);
+    
+    for (int i  = 0; i < num_mappers; i++) {
+        char *filename = argv[i + 1];
+        num_map_threads_created++;
+        pthread_create(&map_threads[i], NULL, (void *) map, (void *) filename); // create thread calling Map() 
     }
 
+    // look for completed threads to run uncompleted map tasks when (num_files > num_mappers)
+    //while (num_map_threads_created != num_files) {
+    //    for (int i = 0; i < num_mappers; i++) {
+    //        pthread_t curr_thread = map_threads[i];
+            // how to check whether a thread is still alive?
+    //     }
+    // }
+
+    // wait for all threads before partitioning
+    //for (int i = 0; i < num_mappers; i++) {
+    //    pthread_join(map_threads[i], NULL);
+    // }
+
+    // partitioning: we need to find all the unique keys and assign them to a reducer
+    
+        // to consider: if num_keys > num_reducers ? if num_keys < num_reducers ? 
+    //init_partition_map(kvl.num_elements);
+    //for (int i = 0; i <     
+    
+
     // create num_reducers threads to perform reduction tasks
-    // pthread_t reduce_threads[num_reducers];
-    // for (int i = 0; i < num_reducers; i++) {
+    //pthread_t reduce_threads[num_reducers];
+    //for (int i = 0; i < num_reducers; i++) {
     //     pthread_t thread;
     //     reduce_threads[i] = thread;
     //     pthread_create(&reduce_threads[i], NULL, (void *) reduce,)
-    // }
+    //}
 }
