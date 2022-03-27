@@ -19,6 +19,15 @@ struct kv_list {
     size_t size;
 };
 
+struct partition_map {
+    char* partition_number;
+    char** list_of_words;    
+};
+
+struct partition_map_list {
+    struct partition_map** elements; 
+};
+
 struct kv_list kvl;
 size_t kvl_counter;
 
