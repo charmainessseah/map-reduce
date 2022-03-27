@@ -5,7 +5,8 @@
 #include "mapreduce.h"
 #include <pthread.h>
 
-pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+//pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+pthread_rwlock_t rwlock;
 
 struct kv {
     char* key;
