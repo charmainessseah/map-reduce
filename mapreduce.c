@@ -56,6 +56,7 @@ void add_to_list(struct kv* pair) {
 // takes a key, value pair (both strings) as input 
 // key: word, value: count (1)
 // we need to store these key value pairs from various threads globally 
+// do partitioning here?
 void MR_Emit(char *key, char *value) 
 {
     pthread_rwlock_wrlock(&rwlock);
@@ -119,13 +120,6 @@ void MR_Run(int argc, char *argv[],
     //for (int i = 0; i < num_mappers; i++) {
     //    pthread_join(map_threads[i], NULL);
     // }
-
-    // partitioning: we need to find all the unique keys and assign them to a reducer
-    
-        // to consider: if num_keys > num_reducers ? if num_keys < num_reducers ? 
-    //init_partition_map(kvl.num_elements);
-    //for (int i = 0; i <     
-    
 
     // create num_reducers threads to perform reduction tasks
     //pthread_t reduce_threads[num_reducers];
