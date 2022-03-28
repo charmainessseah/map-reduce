@@ -6,7 +6,8 @@
 #include <pthread.h>
 
 pthread_rwlock_t rwlock;
-
+int num_partitions;
+Partitioner partitioner;
 struct kv {
     char* key;
     char* value;
@@ -19,7 +20,7 @@ struct kv_list {
 };
 
 struct partition_map {
-    size_t partition_number;
+    unsigned long partition_number;
     char** list_of_words;
     size_t num_words;
 };
@@ -60,6 +61,11 @@ void add_to_list(struct kv* pair) {
     pthread_rwlock_unlock(&rwlock);
 }
 
+void add_to_map_list(struct partition_map* map){
+    pthread_rwlock_wrlock(&rwlock);
+    partition_list.elements[partition_list.num_elements++] = map;
+    pthread_rwlock_unlock(&rwlock);
+}
 // called by Map()
 // takes a key, value pair (both strings) as input 
 // key: word, value: count (1)
@@ -69,6 +75,7 @@ void MR_Emit(char *key, char *value)
 {
     pthread_rwlock_wrlock(&rwlock);
     struct kv *pair = (struct kv*) malloc(sizeof(struct kv));
+    struct partition_map *map = (struct partition_map*) malloc(sizeof(struct partition_map));
     if (pair == NULL) {
         printf("Malloc error! %s\n", strerror(errno));
         pthread_rwlock_unlock(&rwlock);
@@ -76,8 +83,12 @@ void MR_Emit(char *key, char *value)
     }
     pair->key = strdup(key);
     pair->value = strdup(value);
+    unsigned long partitionNumber = partitioner(key, num_partitions);
+    map->partition_number = partitionNumber;
+    map->list_of_words[map.num_elements++] = strdup(key); 
     pthread_rwlock_unlock(&rwlock);
     add_to_list(pair);
+    add_to_map_list(map);
 }
 
 // num partitions equal to num_reducers
@@ -97,7 +108,9 @@ void MR_Run(int argc, char *argv[],
 {
     // create data structure to to pass keys and values from mappers to reducers
     init_kv_list(10); // init kv list to size 10
-    
+    num_partitions = num_reducers;
+    partitioner = partition;
+    init_partition_map_list(num_partitions);
     int num_files = argc - 1;
     int num_map_threads_created = 0;
     
