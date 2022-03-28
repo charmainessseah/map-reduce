@@ -8,6 +8,7 @@
 pthread_rwlock_t rwlock;
 int num_partitions;
 Partitioner partitioner;
+
 struct kv {
     char* key;
     char* value;
@@ -27,7 +28,7 @@ struct partition_map {
 
 struct partition_map_list {
     struct partition_map** elements;
-    size_t num_elements; 
+    size_t num_elements;
 };
 
 struct kv_list kvl;
@@ -125,18 +126,20 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
     return hash % num_partitions;
 }
 
-/*
+
 char* get_func(char *key, int partition_number) {
     for(int i = 0; i < 100; i++) {
-       if(strcmp(partition_list.elements[partition_number - 1].list_of_words[i], key) == 0){
-           if(partition_list.elements[partition_number - 1].list_of_words[i + 1] == NULL) {
+       if(strcmp(partition_list.elements[partition_number - 1]->list_of_words[i], key) == 0){
+           if(partition_list.elements[partition_number - 1]->list_of_words[i + 1] == NULL) {
 	         return NULL;
 	   } else {
-		 return partition_list.elements[partition_number - 1].list_of_words[i + 1];
+		 return partition_list.elements[partition_number - 1]->list_of_words[i + 1];
+           }
        }
     }
+    return NULL;
 }
-*/
+
 
 void Thread_Map(void* map) {
     while(processed_files != num_files) {
