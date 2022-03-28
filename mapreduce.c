@@ -5,7 +5,6 @@
 #include "mapreduce.h"
 #include <pthread.h>
 
-//pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 pthread_rwlock_t rwlock;
 
 struct kv {
@@ -20,25 +19,25 @@ struct kv_list {
 };
 
 struct partition_map {
-    char* partition_number;
-    char** list_of_words;    
+    size_t partition_number;
+    char** list_of_words;
+    size_t num_words;
 };
 
 struct partition_map_list {
-    struct partition_map** elements; 
+    struct partition_map** elements;
+    size_t num_elements; 
 };
 
 struct kv_list kvl;
 size_t kvl_counter;
 
-struct kv_list partitioning_map;
-size_t partitioning_map_counter;
+struct partition_map_list partition_list;
 
-void init_partition_map(size_t size) {
+void init_partition_map_list(size_t size) {
     pthread_rwlock_wrlock(&rwlock);
-    partitioning_map.elements = (struct kv**) malloc(size * sizeof(struct kv*));
-    partitioning_map.num_elements = 0;
-    partitioning_map.size = size;
+    partition_list.elements = (struct partition_map**) malloc(size * (sizeof(size_t) + sizeof(char**) * 256));
+    partition_list.num_elements = 0;
     pthread_rwlock_unlock(&rwlock);
 }
 
