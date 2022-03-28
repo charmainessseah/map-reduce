@@ -112,6 +112,17 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
     return hash % num_partitions;
 }
 
+char* get_func(char *key, int partition_number) {
+    for(int i = 0; i < 100; i++) {
+       if(strcmp(partition_list.elements[partition_number - 1].list_of_words[i], key) == 0){
+           if(partition_list.elements[partition_number - 1].list_of_words[i + 1] == NULL) {
+	         return NULL;
+	   } else {
+		 return partition_list.elements[partition_number - 1].list_of_words[i + 1];
+       }
+    }
+}
+
 void MR_Run(int argc, char *argv[],
             Mapper map, int num_mappers,
             Reducer reduce, int num_reducers,
