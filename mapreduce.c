@@ -37,10 +37,21 @@ struct partition_map_list partition_list;
 
 void init_partition_map_list(size_t size) {
     pthread_rwlock_wrlock(&rwlock);
-    partition_list.elements = (struct partition_map**) malloc(size * (sizeof(size_t) + sizeof(char**) * 256));
+    //partition_list.elements = (struct partition_map**) malloc(size * (sizeof(size_t) + sizeof(char**) * 256));
+    partition_list.elements = (struct partition_map**) malloc(size * sizeof(struct partition_map*));
+    for (int i = 0; i < size; i++) {
+        struct partition_map *map = (struct partition_map*) malloc(sizeof(struct partition_map));
+        partition_list.elements[i] = map;
+        map->partition_number = (unsigned long) i + 1;
+        for (int i = 0; i < 256; i++) {
+            map->list_of_words[i] = NULL;
+        } 
+        map-> num_words = 0;
+    }
     partition_list.num_elements = 0;
     pthread_rwlock_unlock(&rwlock);
 }
+
 
 void init_kv_list(size_t size) {
     pthread_rwlock_wrlock(&rwlock);
@@ -85,7 +96,7 @@ void MR_Emit(char *key, char *value)
     pair->value = strdup(value);
     unsigned long partitionNumber = partitioner(key, num_partitions);
     map->partition_number = partitionNumber;
-    map->list_of_words[map.num_elements++] = strdup(key); 
+    map->list_of_words[map->num_words++] = strdup(key); 
     pthread_rwlock_unlock(&rwlock);
     add_to_list(pair);
     add_to_map_list(map);
