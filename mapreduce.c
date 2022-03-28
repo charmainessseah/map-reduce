@@ -35,9 +35,21 @@ size_t kvl_counter;
 
 struct partition_map_list partition_list;
 
+struct file_data {
+    char** filenames;
+    int* file_processed_flags_array;
+};
+
+// for map threads
+struct file_data global_file_data;
+int num_files;
+int processed_files;
+
+// for reduce threads
+
+
 void init_partition_map_list(size_t size) {
     pthread_rwlock_wrlock(&rwlock);
-    //partition_list.elements = (struct partition_map**) malloc(size * (sizeof(size_t) + sizeof(char**) * 256));
     partition_list.elements = (struct partition_map**) malloc(size * sizeof(struct partition_map*));
     for (int i = 0; i < size; i++) {
         struct partition_map *map = (struct partition_map*) malloc(sizeof(struct partition_map));
@@ -77,6 +89,7 @@ void add_to_map_list(struct partition_map* map){
     partition_list.elements[partition_list.num_elements++] = map;
     pthread_rwlock_unlock(&rwlock);
 }
+
 // called by Map()
 // takes a key, value pair (both strings) as input 
 // key: word, value: count (1)
@@ -112,6 +125,7 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
     return hash % num_partitions;
 }
 
+/*
 char* get_func(char *key, int partition_number) {
     for(int i = 0; i < 100; i++) {
        if(strcmp(partition_list.elements[partition_number - 1].list_of_words[i], key) == 0){
@@ -120,6 +134,27 @@ char* get_func(char *key, int partition_number) {
 	   } else {
 		 return partition_list.elements[partition_number - 1].list_of_words[i + 1];
        }
+    }
+}
+*/
+
+void Thread_Map(void* map) {
+    while(processed_files != num_files) {
+        for (int i = 0; i < num_files; i++) {
+            if (!global_file_data.file_processed_flags_array[i]) {
+                ((Mapper)(map)) (global_file_data.filenames[i]);
+                processed_files++;
+                global_file_data.file_processed_flags_array[i] = 1;                    
+            }
+        }
+    }    
+}
+
+int curr_partition_num;
+void Thread_Reduce(void* reduce) {
+    for (int i = 0; i < num_partitions; i++) {
+        // get list of words associated with partition number, and call reduce() on each word
+        // (*reduce)((kvl.elements[kvl_counter])->key, get_func, 0);
     }
 }
 
@@ -133,42 +168,35 @@ void MR_Run(int argc, char *argv[],
     num_partitions = num_reducers;
     partitioner = partition;
     init_partition_map_list(num_partitions);
-    int num_files = argc - 1;
-    int num_map_threads_created = 0;
-    
-    if (num_mappers > num_files) {
-        // TODO: handle this case
-        printf("Error: There are more mappers than files\n");
-        exit(1);
-    }
+    num_files = argc - 1;
 
     // create num_mappers threads to perform map tasks
     pthread_t map_threads[num_mappers];
-    
-    for (int i  = 0; i < num_mappers; i++) {
-        char *filename = argv[i + 1];
-        num_map_threads_created++;
-        pthread_create(&map_threads[i], NULL, (void *) map, (void *) filename); // create thread calling Map() 
+   
+    // malloc and init global_file_data filenames and flags
+    global_file_data.filenames = (char**) malloc(sizeof(char*) * num_files);
+    global_file_data.file_processed_flags_array = malloc(sizeof(int) * num_files);
+
+    for(int i = 0; i < num_files; i++) {
+        global_file_data.filenames[i] = strdup(argv[i + 1]);
+        global_file_data.file_processed_flags_array[i] = 0;
     }
 
-    // look for completed threads to run uncompleted map tasks when (num_files > num_mappers)
-    //while (num_map_threads_created != num_files) {
-    //    for (int i = 0; i < num_mappers; i++) {
-    //        pthread_t curr_thread = map_threads[i];
-            // how to check whether a thread is still alive?
-    //     }
-    // }
+    // create mapper threads
+    for (int i  = 0; i < num_mappers; i++) {
+        pthread_create(&map_threads[i], NULL, (void *) Thread_Map, (void *) map); 
+    }
 
-    // wait for all threads before partitioning
-    //for (int i = 0; i < num_mappers; i++) {
-    //    pthread_join(map_threads[i], NULL);
-    // }
+    // wait for all threads before sort and reduce
+    for (int i = 0; i < num_mappers; i++) {
+        pthread_join(map_threads[i], NULL);
+    }
 
-    // create num_reducers threads to perform reduction tasks
-    //pthread_t reduce_threads[num_reducers];
-    //for (int i = 0; i < num_reducers; i++) {
-    //     pthread_t thread;
-    //     reduce_threads[i] = thread;
-    //     pthread_create(&reduce_threads[i], NULL, (void *) reduce,)
-    //}
+    // do sorting here
+
+    // create reduce threads
+    for (int i  = 0; i < num_reducers; i++) {
+        curr_partition_num = i + 1; 
+        //pthread_create(&map_threads[i], NULL, (void *) Thread_Reduce, (void *) reduce); 
+    } 
 }
