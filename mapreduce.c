@@ -161,6 +161,12 @@ void Thread_Reduce(void* reduce) {
     }
 }
 
+int cmpstr(const void* a, const void* b) {
+    const char* aa = (const char*)a;
+    const char* bb = (const char*)b;
+    return strcmp(aa, bb);
+}
+
 void MR_Run(int argc, char *argv[],
             Mapper map, int num_mappers,
             Reducer reduce, int num_reducers,
@@ -196,10 +202,15 @@ void MR_Run(int argc, char *argv[],
     }
 
     // do sorting here
+    for (int i = 0; i< num_partitions; i++) {
+	qsort((void*)partition_list.elements[i]->list_of_words, partition_list.elements[i]->num_words,sizeof(char*),cmpstr); 
+    }
+
 
     // create reduce threads
     for (int i  = 0; i < num_reducers; i++) {
         curr_partition_num = i + 1; 
         //pthread_create(&map_threads[i], NULL, (void *) Thread_Reduce, (void *) reduce); 
     } 
+    // reduce
 }
