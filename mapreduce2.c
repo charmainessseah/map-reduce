@@ -24,6 +24,7 @@ struct partition_map {
     unsigned long partition_number;
     char** list_of_words;
     size_t num_words;
+    size_t curr_index;
 };
 
 struct partition_map_list {
@@ -66,6 +67,7 @@ void init_partition_map_list(size_t size) {
             map->list_of_words[i] = NULL;
         } 
         map-> num_words = 0;
+	map-> curr_index = 0;
     }
     partition_list.num_elements = 0;
     pthread_rwlock_unlock(&rwlock);
@@ -138,13 +140,11 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
 
 
 char* get_func(char *key, int partition_number) {
-    for(int i = 0; i < 100; i++) {
+    int index = partition_list.elements[partition_number - 1]->curr_index;
+    for(int i = index; i < 100; i++) {
         if(strcmp(partition_list.elements[partition_number - 1]->list_of_words[i], key) == 0){
-            if(partition_list.elements[partition_number - 1]->list_of_words[i + 1] == NULL) {
-                return NULL;
-            } else {
-                return partition_list.elements[partition_number - 1]->list_of_words[i + 1];
-            }
+            partition_list.elements[partition_number - 1]->curr_index++;
+	    return partition_list.elements[partition_number - 1]->list_of_words[i];
         }
     }
     return NULL;
