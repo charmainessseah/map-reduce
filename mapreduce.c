@@ -141,11 +141,9 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
 
 char* get_func(char *key, int partition_number) {
     int index = partition_list.elements[partition_number - 1]->curr_index;
-    for(int i = index; i < 100; i++) {
-        if(strcmp(partition_list.elements[partition_number - 1]->list_of_words[i], key) == 0){
-            partition_list.elements[partition_number - 1]->curr_index++;
-	    return partition_list.elements[partition_number - 1]->list_of_words[i];
-        }
+    if(strcmp(partition_list.elements[partition_number - 1]->list_of_words[index], key) == 0){
+        partition_list.elements[partition_number - 1]->curr_index++;
+	return partition_list.elements[partition_number - 1]->list_of_words[index];
     }
     return NULL;
 }
