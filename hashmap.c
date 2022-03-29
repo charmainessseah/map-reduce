@@ -77,7 +77,6 @@ char* MapGet(HashMap* hashmap, char* key)
     printf("map get lock\n");
     pthread_rwlock_rdlock(&rwlock);
 
-    printf("here0\n");
     while (hashmap->contents[h] != NULL) {
         printf("here1\n");
         if (!strcmp(key, hashmap->contents[h]->key)) {
