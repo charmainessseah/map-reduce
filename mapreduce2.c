@@ -57,10 +57,10 @@ void init_partition_map_list(size_t size) {
     for (int i = 0; i < size; i++) {
         struct partition_map *map = (struct partition_map*) malloc(sizeof(struct partition_map));
         partition_list->elements[i] = map;
-        map->partition_number = (unsigned long) i + 1;
-        for (int i = 0; i < 256; i++) {
+        map->partition_number = (unsigned long) i;
+        for (int j = 0; j < 256; j++) {
             map->list_of_words = (char **) malloc(sizeof(char *) * 256);
-            map->list_of_words[i] = NULL;
+            map->list_of_words[j] = NULL;
         } 
         map-> num_words = 0;
         map-> curr_index = 0;
@@ -82,13 +82,13 @@ void init_kv_list(size_t size) {
 void MR_Emit(char *key, char *value) 
 {
     pthread_rwlock_wrlock(&rwlock);
-    printf("enter emit\n");
+    //printf("enter emit\n");
     unsigned long partitionNumber = partitioner(key, num_partitions);
-    printf("here 1\n");
-    partition_list->elements[partitionNumber - 1]->partition_number = partitionNumber;
-    printf("here 2\n");
-    partition_list->elements[partitionNumber - 1]->list_of_words[partition_list->elements[partitionNumber - 1]->num_words++] = strdup(key); 
-    printf("exit emit\n");
+    //printf("here 1\n");
+    partition_list->elements[partitionNumber]->partition_number = partitionNumber;
+  //  printf("here 2\n");
+    partition_list->elements[partitionNumber]->list_of_words[partition_list->elements[partitionNumber]->num_words++] = strdup(key); 
+//    printf("exit emit\n");
     pthread_rwlock_unlock(&rwlock);
 }
 
@@ -101,10 +101,10 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
 }
 
 char* get_func(char *key, int partition_number) {
-    int index = partition_list->elements[partition_number - 1]->curr_index;
-    if(strcmp(partition_list->elements[partition_number - 1]->list_of_words[index], key) == 0){
-        partition_list->elements[partition_number - 1]->curr_index++;
-	return partition_list->elements[partition_number - 1]->list_of_words[index];
+    int index = partition_list->elements[partition_number]->curr_index;
+    if(strcmp(partition_list->elements[partition_number]->list_of_words[index], key) == 0){
+        partition_list->elements[partition_number]->curr_index++;
+	return partition_list->elements[partition_number]->list_of_words[index];
     }
     return NULL;
 }
@@ -127,18 +127,21 @@ void Thread_Map(void* map) {
 
 void Thread_Reduce(void* args) {
     int curr_partition_num = *((int*) args);
-    size_t word_count = partition_list->elements[curr_partition_num - 1]->num_words;
-    
+    size_t word_count = partition_list->elements[curr_partition_num]->num_words;
+    printf("access1\n");
     char **unique_words = (char **) malloc(256 * sizeof(char*));
+    printf("malloc1\n");
     int num_unique_words = 0;
     for (int i = 0; i < word_count; i++) {
         if (num_unique_words != 0) {
-            if (strcmp(unique_words[num_unique_words - 1], partition_list->elements[curr_partition_num - 1]->list_of_words[i]) != 0) {
-                unique_words[num_unique_words++] = strdup(partition_list->elements[curr_partition_num - 1]->list_of_words[i]);
+            if (strcmp(unique_words[num_unique_words - 1], partition_list->elements[curr_partition_num]->list_of_words[i]) != 0) {
+                 printf("access3+\n");
+		 unique_words[num_unique_words++] = strdup(partition_list->elements[curr_partition_num]->list_of_words[i]);
             }
         } else {
-            unique_words[i] = strdup(partition_list->elements[curr_partition_num - 1]->list_of_words[i]);
-            num_unique_words++;
+            unique_words[i] = strdup(partition_list->elements[curr_partition_num]->list_of_words[i]);
+            printf("access2\n");
+	    num_unique_words++;
         }
     }
 
@@ -217,7 +220,7 @@ void MR_Run(int argc, char *argv[],
     for (int i  = 0; i < num_reducers; i++) {
         printf("creating reducer thread num: %d\n", reduce_thread_num++);
         int *curr_partition_num = (int *) malloc(sizeof(int));
-        *curr_partition_num = i + 1;
+        *curr_partition_num = i;
         pthread_create(&reduce_threads[i], NULL, (void *) Thread_Reduce, (void *) curr_partition_num); 
     }
     printf("finished creating reduce threads. Waiting for reduce threads to finish their work\n");
