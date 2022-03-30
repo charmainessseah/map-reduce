@@ -170,7 +170,7 @@ void MR_Run(int argc, char *argv[],
     num_partitions = num_reducers;
     partitioner = partition;
     init_partition_map_list(num_partitions);
-    num_files = argc - 1;
+    num_files = argc - 2;
 
     // malloc and init global_file_data filenames and flags
     global_file_data = (struct file_data*) malloc(sizeof(struct file_data)); 
