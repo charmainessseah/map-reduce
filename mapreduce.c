@@ -173,7 +173,9 @@ void Thread_Reduce(void* args) {
 int cmpstr(const void* a, const void* b) {
     const char* aa = (const char*)a;
     const char* bb = (const char*)b;
-    return strcmp(aa, bb);
+    int result = strcmp(aa, bb);
+    printf("strcmp result between %s and %s: %d\n", aa, bb, result);
+    return result;
 }
 
 void MR_Run(int argc, char *argv[],
@@ -218,6 +220,16 @@ void MR_Run(int argc, char *argv[],
         pthread_join(map_threads[i], NULL);
     }
 
+printf("before sorting word lists:\n"); 
+     for (int i = 0; i < num_partitions; i++) {
+         printf("part num: %d , num words: %ld ", i, partition_list->elements[i]->num_words);
+         printf(", list of words: ");
+         for (int j = 0; j < partition_list->elements[i]->num_words; j++) {
+             printf("%s, ", partition_list->elements[i]->list_of_words[j]);
+         }
+         printf("\n");
+     }
+
     // do sorting here
     printf("about to do sorting\n");
     for (int i = 0; i < num_partitions; i++) {
@@ -225,6 +237,7 @@ void MR_Run(int argc, char *argv[],
     }
     printf("finished sorting\n");
     
+    printf("after sorting word lists:\n");    
     for (int i = 0; i < num_partitions; i++) {
         printf("part num: %d , num words: %ld ", i, partition_list->elements[i]->num_words);
         printf(", list of words: ");
