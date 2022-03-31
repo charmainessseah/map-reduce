@@ -57,10 +57,11 @@ void init_partition_map_list(size_t size) {
     for (int i = 0; i < size; i++) {
         struct partition_map *map = (struct partition_map*) malloc(sizeof(struct partition_map));
         partition_list->elements[i] = map;
-        map->partition_number = (unsigned long) i + 1;
+        map->partition_number = (unsigned long) i;
+        map->list_of_words = (char **) malloc(sizeof(char *) * 256);
         for (int i = 0; i < 256; i++) {
-            map->list_of_words = (char **) malloc(sizeof(char *) * 256);
-            map->list_of_words[i] = NULL;
+            //            map->list_of_words = (char **) malloc(sizeof(char *) * 256);
+            map->list_of_words[i] = (char *) malloc(sizeof(char) * 256);
         } 
         map-> num_words = 0;
         map-> curr_index = 0;
@@ -84,10 +85,13 @@ void MR_Emit(char *key, char *value)
     pthread_rwlock_wrlock(&rwlock);
     printf("enter emit\n");
     unsigned long partitionNumber = partitioner(key, num_partitions);
+    printf("key: %s, part num: %ld\n", key, partitionNumber);
+    int numwords = partition_list->elements[partitionNumber]->num_words;
     printf("here 1\n");
-    partition_list->elements[partitionNumber - 1]->partition_number = partitionNumber;
+    partition_list->elements[partitionNumber]->partition_number = partitionNumber;
     printf("here 2\n");
-    partition_list->elements[partitionNumber - 1]->list_of_words[partition_list->elements[partitionNumber - 1]->num_words++] = strdup(key); 
+    partition_list->elements[partitionNumber]->list_of_words[partition_list->elements[partitionNumber]->num_words++] = strdup(key); 
+    printf("just stored word: %s\n", partition_list->elements[partitionNumber]->list_of_words[numwords]);
     printf("exit emit\n");
     pthread_rwlock_unlock(&rwlock);
 }
@@ -101,10 +105,10 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions) {
 }
 
 char* get_func(char *key, int partition_number) {
-    int index = partition_list->elements[partition_number - 1]->curr_index;
-    if(strcmp(partition_list->elements[partition_number - 1]->list_of_words[index], key) == 0){
-        partition_list->elements[partition_number - 1]->curr_index++;
-	return partition_list->elements[partition_number - 1]->list_of_words[index];
+    int index = partition_list->elements[partition_number]->curr_index;
+    if(strcmp(partition_list->elements[partition_number]->list_of_words[index], key) == 0){
+        partition_list->elements[partition_number]->curr_index++;
+	return partition_list->elements[partition_number]->list_of_words[index];
     }
     return NULL;
 }
@@ -127,31 +131,43 @@ void Thread_Map(void* map) {
 
 void Thread_Reduce(void* args) {
     int curr_partition_num = *((int*) args);
-    size_t word_count = partition_list->elements[curr_partition_num - 1]->num_words;
+    size_t word_count = partition_list->elements[curr_partition_num]->num_words;
     
-    char **unique_words = (char **) malloc(256 * sizeof(char*));
+    //char **unique_words = (char **) malloc(256 * sizeof(char*));
+    //for (int i = 0; i < 256; i++) {
+    //    unique_words[i] = (char *) malloc(sizeof(char) * 256);
+   // }
+    char unique_words[word_count][256];
     int num_unique_words = 0;
+    printf("curr part num: %d, word count: %ld\n", curr_partition_num, word_count);
     for (int i = 0; i < word_count; i++) {
         if (num_unique_words != 0) {
-            if (strcmp(unique_words[num_unique_words - 1], partition_list->elements[curr_partition_num - 1]->list_of_words[word_count]) != 0) {
-                unique_words[i] = strdup(partition_list->elements[curr_partition_num - 1]->list_of_words[word_count]);
-                num_unique_words++;
+            printf("we are now comparing %s and %s\n", unique_words[num_unique_words - 1], partition_list->elements[curr_partition_num]->list_of_words[i]);
+            if (strcmp(unique_words[num_unique_words - 1], partition_list->elements[curr_partition_num]->list_of_words[i]) != 0) {
+                //unique_words[i] = strdup(partition_list->elements[curr_partition_num]->list_of_words[word_count]);
+                strcpy(unique_words[num_unique_words++], partition_list->elements[curr_partition_num]->list_of_words[i]);
+                printf("adding unique word for partition num %d: %s\n", curr_partition_num, unique_words[num_unique_words - 1]);
+                //num_unique_words++;
+                printf("adding subsequent unique word\n");
             }
         } else {
-            unique_words[i] = strdup(partition_list->elements[curr_partition_num - 1]->list_of_words[word_count]);
-            num_unique_words++;
+            strcpy(unique_words[num_unique_words++], partition_list->elements[curr_partition_num]->list_of_words[i]);
+            //num_unique_words++;
+            printf("adding first unique word: %s\n", unique_words[num_unique_words - 1]);
         }
     }
+    printf("part num %d has %d unique words\n", curr_partition_num, num_unique_words);
 
     for (int i = 0; i < num_unique_words; i++) {
-        (*reduce_function) (unique_words[i], get_func, 0);
+        (*reduce_function) (unique_words[i], get_func, curr_partition_num);
     }
-
+/*
     // free unique_words
     for (int i = 0; i < num_unique_words; i++) {
         free(unique_words[i]);
     }
     free(unique_words);
+*/
 }
 
 int cmpstr(const void* a, const void* b) {
@@ -204,11 +220,19 @@ void MR_Run(int argc, char *argv[],
 
     // do sorting here
     printf("about to do sorting\n");
-    for (int i = 0; i< num_partitions; i++) {
+    for (int i = 0; i < num_partitions; i++) {
         qsort((void*)partition_list->elements[i]->list_of_words, partition_list->elements[i]->num_words,sizeof(char*),cmpstr); 
     }
     printf("finished sorting\n");
-
+    
+    for (int i = 0; i < num_partitions; i++) {
+        printf("part num: %d , num words: %ld ", i, partition_list->elements[i]->num_words);
+        printf(", list of words: ");
+        for (int j = 0; j < partition_list->elements[i]->num_words; j++) {
+            printf("%s, ", partition_list->elements[i]->list_of_words[j]);
+        }
+        printf("\n");
+    }
     // create reduce threads
     printf("creating reduce threads\n");
     printf("num reduce threads: %d\n", num_reducers);
@@ -218,14 +242,14 @@ void MR_Run(int argc, char *argv[],
     for (int i  = 0; i < num_reducers; i++) {
         printf("creating reducer thread num: %d\n", reduce_thread_num++);
         int *curr_partition_num = (int *) malloc(sizeof(int));
-        *curr_partition_num = i + 1;
+        *curr_partition_num = i;
         pthread_create(&reduce_threads[i], NULL, (void *) Thread_Reduce, (void *) curr_partition_num); 
     }
     printf("finished creating reduce threads. Waiting for reduce threads to finish their work\n");
 
     // wait for all reduce threads
     for (int i = 0; i < num_reducers; i++) {
-        pthread_join(reduce_threads[i], NULL);
+       pthread_join(reduce_threads[i], NULL);
     }
     printf("all reduced threads have completed\n");
 
