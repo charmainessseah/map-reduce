@@ -108,7 +108,7 @@ char* get_func(char *key, int partition_number) {
     int index = partition_list->elements[partition_number]->curr_index;
     if(strcmp(partition_list->elements[partition_number]->list_of_words[index], key) == 0){
         partition_list->elements[partition_number]->curr_index++;
-	return partition_list->elements[partition_number]->list_of_words[index];
+        return partition_list->elements[partition_number]->list_of_words[index];
     }
     return NULL;
 }
@@ -171,8 +171,8 @@ void Thread_Reduce(void* args) {
 }
 
 int cmpstr(const void* a, const void* b) {
-    const char* aa = (const char*)a;
-    const char* bb = (const char*)b;
+    const char* aa = *(const char**)a;
+    const char* bb = *(const char**)b;
     int result = strcmp(aa, bb);
     printf("strcmp result between %s and %s: %d\n", aa, bb, result);
     return result;
@@ -233,7 +233,7 @@ printf("before sorting word lists:\n");
     // do sorting here
     printf("about to do sorting\n");
     for (int i = 0; i < num_partitions; i++) {
-        qsort((void*)partition_list->elements[i]->list_of_words[i], partition_list->elements[i]->num_words,sizeof(char*),cmpstr); 
+        qsort((void*)partition_list->elements[i]->list_of_words, partition_list->elements[i]->num_words, sizeof(char *), cmpstr); 
     }
     printf("finished sorting\n");
     
