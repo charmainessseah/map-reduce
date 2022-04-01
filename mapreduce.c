@@ -233,7 +233,7 @@ printf("before sorting word lists:\n");
     // do sorting here
     printf("about to do sorting\n");
     for (int i = 0; i < num_partitions; i++) {
-        qsort((void*)partition_list->elements[i]->list_of_words, partition_list->elements[i]->num_words,sizeof(char*),cmpstr); 
+        qsort((void*)partition_list->elements[i]->list_of_words[i], partition_list->elements[i]->num_words,sizeof(char*),cmpstr); 
     }
     printf("finished sorting\n");
     
