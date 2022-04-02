@@ -50,20 +50,32 @@ int processed_files;
 
 Reducer reduce_function;
 
+void Free_Partition_List() {
+    for (int i = 0; i < num_partitions; i++) {
+        size_t capacity = partition_list->elements[i]->capacity;
+        for (int j = 0; j < capacity; j++) {
+            free(partition_list->elements[i]->list_of_words[j]);
+        }
+        free(partition_list->elements[i]);
+    }
+    free(partition_list->elements);
+    free(partition_list);
+}
+
 void init_partition_map_list(size_t size) {
     pthread_rwlock_wrlock(&rwlock);
     partition_list = (struct partition_map_list*) malloc(sizeof(struct partition_map_list));
     partition_list->elements = (struct partition_map**) malloc(size * sizeof(struct partition_map*));
     for (int i = 0; i < size; i++) {
         //struct partition_map *map = (struct partition_map*) malloc(sizeof(struct partition_map));
-        partition_list->elements[i] = (struct partition_map*) malloc(sizeof(struct partition_map));
-        partition_list->elements[i]->partition_number = (unsigned long) i;
+    partition_list->elements[i] = (struct partition_map*) malloc(sizeof(struct partition_map));
+    partition_list->elements[i]->partition_number = (unsigned long) i;
         int init_capacity = 256;
-        partition_list->elements[i]->list_of_words = (char **) malloc(sizeof(char *) * init_capacity);
+    partition_list->elements[i]->list_of_words = (char **) malloc(sizeof(char *) * init_capacity);
         for (int j = 0; j < 256; j++) {
             //            map->list_of_words = (char **) malloc(sizeof(char *) * 256);
             partition_list->elements[i]->list_of_words[j] = (char *) malloc(sizeof(char) * 256);
-        } 
+        }
         partition_list->elements[i]->num_words = 0;
         partition_list->elements[i]->curr_index = 0;
         partition_list->elements[i]->capacity = 256;
@@ -126,13 +138,19 @@ char* get_func(char *key, int partition_number) {
 }
 
 void Thread_Map(void* map) {
-    while(processed_files != num_files) {
+    while(processed_files < num_files) {
+        //printf("processed_files: %d, num files: %d\n", processed_files, num_files);
         for (int i = 0; i < num_files; i++) {
+            pthread_rwlock_wrlock(&rwlock);
             if (!global_file_data->file_processed_flags_array[i]) {
                 processed_files++;
+                global_file_data->file_processed_flags_array[i] = 1;
+                pthread_rwlock_unlock(&rwlock);
                 ((Mapper)(map)) (global_file_data->filenames[i]);
-                global_file_data->file_processed_flags_array[i] = 1;                    
+                pthread_rwlock_wrlock(&rwlock);
+                //global_file_data->file_processed_flags_array[i] = 1;                    
             }
+            pthread_rwlock_unlock(&rwlock);
         }
     }
 }
@@ -169,6 +187,32 @@ int cmpstr(const void* a, const void* b) {
     return result;
 }
 
+void Free_Global_File_Data(int num_files) {
+     for (int i = 0; i < num_files; i++) {
+         free(global_file_data->filenames[i]);
+     }
+     free(global_file_data->filenames);
+     free(global_file_data->file_processed_flags_array);
+     free(global_file_data);
+}
+
+#include <ctype.h>
+
+char* trimRight(char* s) {
+    //Safeguard against empty strings
+    int len = strlen(s);
+    if(len == 0) {
+        return s;
+    }
+    //Actual algorithm
+    char* pos = s + len - 1;
+    while(pos >= s && isspace(*pos)) {
+        *pos = '\0';
+        pos--;
+    }
+    return s;
+}
+
 void MR_Run(int argc, char *argv[],
             Mapper map, int num_mappers,
             Reducer reduce, int num_reducers,
@@ -178,14 +222,15 @@ void MR_Run(int argc, char *argv[],
     partitioner = partition;
     init_partition_map_list(num_partitions);
     num_files = argc - 1;
+    processed_files = 0;
 
     // malloc and init global_file_data filenames and flags
     global_file_data = (struct file_data*) malloc(sizeof(struct file_data)); 
     global_file_data->filenames = (char**) malloc(sizeof(char*) * num_files);
     global_file_data->file_processed_flags_array = malloc(sizeof(int) * num_files);
-
     for(int i = 0; i < num_files; i++) {
-        global_file_data->filenames[i] = strdup(argv[i + 1]);
+        char *filename = trimRight(argv[i + 1]);
+        global_file_data->filenames[i] = strdup(filename);
         global_file_data->file_processed_flags_array[i] = 0;
     }
 
@@ -206,7 +251,7 @@ void MR_Run(int argc, char *argv[],
     for (int i = 0; i < num_mappers; i++) {
         pthread_join(map_threads[i], NULL);
     }
-
+    
     // do sorting here
     for (int i = 0; i < num_partitions; i++) {
         qsort((void*)partition_list->elements[i]->list_of_words, partition_list->elements[i]->num_words, sizeof(char *), cmpstr); 
@@ -225,4 +270,9 @@ void MR_Run(int argc, char *argv[],
     for (int i = 0; i < num_reducers; i++) {
        pthread_join(reduce_threads[i], NULL);
     }
+   
+    // Free Memory 
+    Free_Global_File_Data(num_files);
+    free(map_threads); 
+    Free_Partition_List();       
 }
