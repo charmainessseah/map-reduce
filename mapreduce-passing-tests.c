@@ -14,13 +14,6 @@ struct kv {
     char* value;
 };
 
-/*
-struct kv_list {
-    struct kv** elements;
-    size_t num_elements;
-    size_t size;
-};*/
-
 struct partition_map {
     unsigned long partition_number;
     char** list_of_words;
@@ -33,9 +26,6 @@ struct partition_map_list {
     struct partition_map** elements;
     size_t num_elements;
 };
-
-//struct kv_list kvl;
-//size_t kvl_counter;
 
 struct partition_map_list *partition_list;
 
@@ -82,15 +72,6 @@ void init_partition_map_list(size_t size) {
     pthread_rwlock_unlock(&rwlock);
 }
 
-/*
-void init_kv_list(size_t size) {
-    pthread_rwlock_wrlock(&rwlock);
-    kvl.elements = (struct kv**) malloc(size * sizeof(struct kv*));
-    kvl.num_elements = 0;
-    kvl.size = size;
-    pthread_rwlock_unlock(&rwlock);
-}
-*/
 int wordcount = 0;
 void MR_Emit(char *key, char *value) 
 {
@@ -195,23 +176,6 @@ void Free_Global_File_Data(int num_files) {
      free(global_file_data);
 }
 
-#include <ctype.h>
-
-char* trimRight(char* s) {
-    //Safeguard against empty strings
-    int len = strlen(s);
-    if(len == 0) {
-        return s;
-    }
-    //Actual algorithm
-    char* pos = s + len - 1;
-    while(pos >= s && isspace(*pos)) {
-        *pos = '\0';
-        pos--;
-    }
-    return s;
-}
-
 void MR_Run(int argc, char *argv[],
             Mapper map, int num_mappers,
             Reducer reduce, int num_reducers,
@@ -228,7 +192,6 @@ void MR_Run(int argc, char *argv[],
     global_file_data->filenames = (char**) malloc(sizeof(char*) * num_files);
     global_file_data->file_processed_flags_array = malloc(sizeof(int) * num_files);
     for(int i = 0; i < num_files; i++) {
-    //    char *filename = trimRight(argv[i + 1]);
         global_file_data->filenames[i] = strdup(argv[i + 1]);
         global_file_data->file_processed_flags_array[i] = 0;
     }
