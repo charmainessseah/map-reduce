@@ -44,11 +44,11 @@ void MapPut(HashMap* hashmap, char* key, void* value, int value_size)
     memcpy(newpair->value, value, value_size);
 
    // printf("map put unlock\n");
-   // pthread_rwlock_unlock(&rwlock);
+   pthread_rwlock_unlock(&rwlock);
 
     h = Hash(key, hashmap->capacity); // hash has a lock
 
-   // pthread_rwlock_wrlock(&rwlock);
+    pthread_rwlock_wrlock(&rwlock);
    // printf("map put lock\n");
 
     while (hashmap->contents[h] != NULL) {
@@ -74,11 +74,11 @@ void MapPut(HashMap* hashmap, char* key, void* value, int value_size)
 
 char* MapGet(HashMap* hashmap, char* key)
 {
-    pthread_rwlock_rdlock(&rwlock);
+    //pthread_rwlock_rdlock(&rwlock);
     int h = Hash(key, hashmap->capacity); // hash has a lock
 
     //printf("map get lock\n");
-    //pthread_rwlock_rdlock(&rwlock);
+    pthread_rwlock_rdlock(&rwlock);
 
     while (hashmap->contents[h] != NULL) {
        // printf("here1\n");
